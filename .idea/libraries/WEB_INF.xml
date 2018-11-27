@@ -1,0 +1,16 @@
+<component name="libraryTable">
+  <library name="WEB-INF">
+    <CLASSES>
+      <root url="file://$USER_HOME$/Documents/eCourt_WarFile/WEB-INF" />
+      <root url="file://$USER_HOME$/Documents/eCourt_WarFile/WEB-INF/classes" />
+      <root url="file://$USER_HOME$/Documents/eCourt_WarFile/WEB-INF/lib" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$USER_HOME$/Documents/eCourt_WarFile/WEB-INF/classes" />
+      <root url="file://$USER_HOME$/Documents/eCourt_WarFile/WEB-INF/lib" />
+    </SOURCES>
+    <jarDirectory url="file://$USER_HOME$/Documents/eCourt_WarFile/WEB-INF/lib" recursive="false" />
+    <jarDirectory url="file://$USER_HOME$/Documents/eCourt_WarFile/WEB-INF/lib" recursive="false" type="SOURCES" />
+  </library>
+</component>

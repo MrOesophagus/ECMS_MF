@@ -1,0 +1,253 @@
+#*
+	Change Management
+ 	Written by: 	kcsmbf 29/05/18
+	Change Log:		kcsmbf 06/06/18 Added Grant actions
+    				kcsmbf 04/06/18 Changed hardcoded links to use $urlTool
+    				kcsmbf 12/06/18 Added caaCard style actions
+                    kcsmbf 25/06/18 Removed table style actions
+                    kcsmbf 28/06/18 Added Issue Grant actions, ceased using $urlTool due to limitations
+                    kcsmbf 09/08/18 Added Reissue Statement of A&L
+                    kcsmbf 15/08/18 Added Grant related actions to OrigApp
+                    kcsmbf 28/08/18 Added flex row functionality
+                    kcsmbf 30/08/18 Adjusted cards to use min-height instead as IE doesn't use flex-row
+                    kcsmbf 24/09/18 Turned off Reissue Statement of A&L, redid links to use formCode not formId
+*#
+
+#set ($cid = $case.id)
+#set ($sc = $case.collect("SubCases").first())
+#if ($case.status == "CLOS")
+  #set ($isClosed = true)
+#elseif ($case.status == "REJ")
+  #set ($isRejected = true)
+#else
+  #set ($isClosed = false)
+  #set ($isRejected = false)
+#end
+#set ($upURL = "/$sysPropTool.getValue('general.serverUrl.environmentName')/cms/case/view?id=")
+#set ($addURL = "/$sysPropTool.getValue('general.serverUrl.environmentName')/cms/case/insert?id=$cid&caseId=$cid&formCode=")
+#set ($will0 = $case.collect("Documents[docDefNumber == '519902']").first())
+#set ($isWillAccepted = false)
+#if ($conditionTool.isTrue("Document is Accepted and Current", $will0))
+  #set ($isWillAccepted = true)
+#end
+#set ($issueGrant = false)
+
+##
+## CAA Card macro
+##
+#macro (caaCard $link $icon $hText $text)
+  <div class="col-xs-12 col-sm-6 col-lg-3 caa-action-card">
+    <a href=$link>
+      <div class="caa-action-card-header">
+        <img src="${sysPropTool.getValue('general.serverUrl')}/static/icons/$icon">
+        <div class="caa-action-card-header-text">$hText</div>
+      </div>
+    </a>
+    <div class="caa-action-card-content">
+      <p>$text</p>
+    </div>
+  </div>
+#end
+
+##
+## Actions Script
+##
+#if ($conditionTool.isTrue("Probate: Show Case Actions Check", $user))
+<h3 style="text-align:center;margin-top:-10px;color:#777">Available Actions</h3>
+#if ($isRejected)
+  <h4 style="text-align:center;">This case has been rejected.  No further actions are permitted.</h4>
+  <br>
+#else
+  <div class="container" style="width:95%;">
+    #if ($case.filingType == "510000")
+      #set ($cc = $case.category)
+      #if ($cc == "510400")
+        #set ($acceptedOG = false)
+        #set ($OG = $case.collect("Documents[docDefNumber == '519908']").first())
+        #if ($conditionTool.isTrue("Document is Accepted and Current", $OG))
+          #set ($acceptedOG = true)
+        #end
+      #end
+      #set ($hasAmendedGrant =  false)
+      #set ($amGrants = $sc.collect("Documents[docDefNumber == '519915']"))
+      #foreach ($amGrant in $amGrants)
+        #if ($amGrant.collect("Statuses[statusType == 'FILED' && endDate == null]").isEmpty() && $amGrant.collect("Statuses[StatusType == 'REJ']").isEmpty())
+          #set ($hasAmendedGrant = true)
+          #break
+        #end
+      #end
+      <div class="panel" id="actions_grant">
+        <div class="row">
+          #if (!$isClosed)
+            #caaCard("${addURL}ADD-5-ProbateAssets", "document_add.png", "Add Asset or Liability", "Add a new Asset or Liability to this case.")
+            #if (($cc == "510100" || $cc == "510200") && !$isWillAccepted && $sc.ctCAAProbates.cfHasOriginalWill != "CHOW")
+              #caaCard("${upURL}$will0.id&caseId=$cid&formCode=UP-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Upload or replace the Will document.")
+            #end
+            #if (!$will0 && $sc.ctCAAProbates.cfHasOriginalWill == "CHOW")
+              #caaCard("${addURL}ADD-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Add a copy of the original Will to the case.")
+            #end
+            #if ($cc == "510400" && !$acceptedOG)
+              #caaCard("${upURL}$OG.id&caseId=$cid&formCode=UP-5-ReceiveOriginalGrant", "scroll_yes.png", "Receive Original Grant", "Upload or replace the Grant document.")
+            #end
+            #caaCard("${upURL}$cid&caseId=$cid&formCode=UP-5-Reject-Grant", "scroll_no.png", "Reject Grant", "Reject the Grant Application.")
+            #caaCard("${addURL}ADD-5-Grant-Discontinue", "scroll_break.png", "Discontinue Grant", "Discontinue the Grant Application.")
+            #if ($sc.status != "ISS" && !$hasAmendedGrant)
+              #caaCard("${addURL}ADD-5-Grant-Issue", "scroll_gen02.png", "Issue Grant", "Issue the Grant.")
+            #end
+            #if ($sc.status != "ISS" && $hasAmendedGrant)
+              #caaCard("${addURL}ADD-5-Amended-Grant-Issue", "scroll_gen02.png", "Issue Amended Grant", "Issue Amended Grant.")
+            #end
+          #end
+          #if ($isClosed && $sc.status == "ISS")
+            #caaCard("${addURL}ADD-5-Grant-Amend-Revoke", "scroll_gen01.png", "Amend or Revoke Grant", "Application to Amend or Revoke a Grant.")
+          #end
+          #caaCard("${addURL}ADD-5-Grant-OtherDoc", "document_gen09.png", "Lodge Document", "Add a Civil Order, Affidavit, or other type of document.")
+          #caaCard("${addURL}ADD-5-NOA-CAR", "document_key.png", "Case Access Request", "Process a Case Access Request by uploading a Notice of Acting / Address for Service.")
+        </div>
+      </div>
+    #elseif ($case.filingType == "520000")
+      #if ($sc.status == "LIVE") #set ($isLive = true) #else #set ($isLive = false) #end
+      #set ($hasWarning = false)
+      #if ($case.collect("Documents[docDefNumber == '529901']").filter("Document is Filed and Current").size() > 0)
+        #set ($hasWarning = true)
+      #end
+      #set ($hasAppWarn = false)
+      #if ($case.collect("Documents[docDefNumber == '529902']").filter("Document is Filed and Current").size() > 0)
+        #set ($hasAppWarn = true)
+      #end
+      #set ($hasCitation = false)
+      #if ($case.collect("Documents[docDefNumber == '529903']").filter("Document is Filed and Current").size() > 0)
+        #set ($hasCitation = true)
+      #end
+      <div class="panel" id="actions_caveat">
+        <div class="row">
+          #if ($isLive && !$hasWarning && !$hasAppWarn && !$hasCitation)
+            #caaCard("${addURL}ADD-5-CaveatRenew", "document_gen04.png", "Renew Caveat", "You may renew this caveat for six months.")
+          #end
+          #if (($isLive || $sc.status == "PENDING") && !$hasAppWarn)
+            #caaCard("${addURL}ADD-5-CaveatWithdraw", "document_remove.png", "Withdraw Caveat", "You may withdraw this caveat.")
+          #end
+          #if ($isLive && $case.collect("Parties[PartyType == 'INTER']").size() > 0)
+            #caaCard("${addURL}ADD-5-Caveat-Warning", "document_alert.png", "Add Warning", "Add a Warning to this Caveat.")
+          #end
+          #if ($isLive)
+            #caaCard("${addURL}ADD-5-Caveat-Citation", "document_add.png", "Add Citation", "Add a Citation to this Caveat.")
+          #end
+          #if ($isLive && ($hasWarning || $hasCitation))
+            #caaCard("${addURL}ADD-5-Caveat-Appearance", "document_gen03.png", "Add Appearance", "Add an Appearance to a Warning or Citation for this Caveat.")
+          #end
+          #caaCard("${addURL}ADD-5-Caveat-OtherDoc", "document_gen09.png", "Lodge Document", "Add a Proof of Service, Affidavit, or other document to this Caveat.")
+          #caaCard("${addURL}ADD-5-NOA-CAR", "document_key.png", "Case Access Request", "Process a Case Access Request by uploading a Notice of Acting / Address for Service.")
+        </div>
+      </div>
+    #elseif ($case.filingType == "530000")
+      #set ($isS9 = false)
+      #if (!$case.collect("Documents[docDefNumber == '529803']").filter("Document is Filed and Current").isEmpty())
+        #set ($isS9 = true)
+      #end
+      #set ($hasAmendedGrant =  false)
+      #set ($amGrants = $sc.collect("Documents[docDefNumber == '519915']"))
+      #foreach ($amGrant in $amGrants)
+        #if ($amGrant.collect("Statuses[statusType == 'FILED' && endDate == null]").isEmpty() && $amGrant.collect("Statuses[StatusType == 'REJ']").isEmpty())
+          #set ($hasAmendedGrant = true)
+          #break
+        #end
+      #end
+      <div class="panel" id="actions_summons">
+        <div class="row">
+          #if (!$isClosed && ($sc.status.contains("OPEN") || $sc.status.contains("PENDING")))
+            #if ($will0)
+              #caaCard("${upURL}$will0.id&caseId=$cid&formCode=UP-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Upload or replace the Will document.")
+            #else
+              #caaCard("${addURL}ADD-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Add a copy of the original Will to the case.")
+            #end
+          #end
+          #if (!$isClosed && ($sc.status == "OPEN" || $sc.status == "PENDING"))
+            #caaCard("${addURL}ADD-5-Summons-Disco", "document_no.png", "Discontinue Application", "Lodge a Notice of Discontinuance")
+            #if (!$case.collect("Parties[PartyType == 'INTER' || PartyType == 'RES']").isEmpty())
+              #caaCard("${addURL}ADD-5-Summons-POS", "document_gen07.png", "Proof of Service", "File a Proof of Service")
+              #caaCard("${addURL}ADD-5-Summons-Response",  "document_gen06.png", "Response to Application", "File a Response to this Application")
+            #end
+          #end
+          #if ($isS9)
+            #caaCard("${addURL}ADD-5-ProbateAssets", "document_add.png", "Add Asset or Liability", "Add a new Asset or Liability to this case.")
+            #if ($sc.status != "ISS" && !$hasAmendedGrant)
+              #caaCard("${addURL}ADD-5-Grant-Issue", "scroll_gen02.png", "Issue Grant", "Issue the Grant.")
+            #end
+            #if ($sc.status != "ISS" && $hasAmendedGrant)
+              #caaCard("${addURL}ADD-5-Amended-Grant-Issue", "scroll_gen02.png", "Issue Amended Grant", "Issue Amended Grant.")
+            #end
+            #caaCard("${upURL}$cid&caseId=$cid&formCode=UP-5-Reject-Grant", "scroll_no.png", "Reject Grant", "Reject the Grant Application.")
+            #if ($isClosed && $sc.status == "ISS")
+              #caaCard("${addURL}ADD-5-Grant-Amend-Revoke", "scroll_gen01.png", "Amend or Revoke Grant", "Application to Amend or Revoke a Grant.")
+            #end
+          #end
+          #if (!$isClosed || $sc.status == "PENDING")
+            #caaCard("${addURL}ADD-5-ORIGAPP-OtherDoc", "document_gen09.png", "Lodge Document", "Add a Proof of Service, Affidavit, or other document.")
+          #end
+          #caaCard("${addURL}ADD-5-NOA-CAR", "document_key.png", "Case Access Request", "Process a Case Access Request by uploading a Notice of Acting / Address for Service.")
+        </div>
+      </div>
+    #elseif ($case.filingType == "540000")
+      <div class="panel" id="actions_subpoena">
+        <div class="row">
+          #if ($sc.status == "ISS" && !$isWillAccepted)
+            #if ($will0)
+              #caaCard("${upURL}$will0.id&caseId=$cid&formCode=UP-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Upload or replace the Will document.")
+            #else
+              #caaCard("${addURL}ADD-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Add a copy of the original Will to the case.")
+            #end
+          #end
+          #caaCard("${addURL}ADD-5-Subpoena-OtherDoc", "document_gen09.png", "Lodge Document", "Add a Proof of Service, Affidavit, or other document to this Subpoena.")
+          #caaCard("${addURL}ADD-5-NOA-CAR", "document_key.png", "Case Access Request", "Process a Case Access Request by uploading a Notice of Acting / Address for Service.")
+        </div>
+      </div>
+    #elseif ($case.filingType == "550000")
+      <div class="panel" id="actions_wd">
+        <div class="row">
+          #if (!$isWillAccepted || !$will0.collect("Statuses[(StatusType == 'UPLFT' || StatusType == 'PENDING') && endDate == null]").isEmpty())
+            #caaCard("${upURL}$will0.id&caseId=$cid&formCode=UP-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Upload or replace the Will document.")
+          #elseif ($isWillAccepted && $sc.collect("Documents[docDefNumber == '539911']").collect("Statuses[StatusType == 'MRN' && endDate == null]").isEmpty() && $sc.collect("Documents[docDefNumber == '519902']").collect("Statuses[StatusType == 'PENDING' && endDate == null]").isEmpty())
+            #caaCard("${addURL}ADD-5-Uplift-Will", "document_gen06.png", "Uplift Will", "Uplift this will.")
+          #end
+          #caaCard("${addURL}ADD-5-WDRA-OtherDoc", "document_gen09.png", "Lodge Document", "Add an Affidavit or other document to this case.")
+          #caaCard("${addURL}ADD-5-NOA-CAR", "document_key.png", "Case Access Request", "Process a Case Access Request by uploading a Notice of Acting / Address for Service.")
+        </div>
+      </div>
+    #elseif ($case.filingType == "560000")
+      <div class="panel" id="actions_renunc">
+        <div class="row">
+          #if ($will0)
+            #if (!$isWillAccepted)
+              #caaCard("${upURL}$will0.id&caseId=$cid&formCode=UP-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Upload or replace the Will document.")
+            #elseif ($isWillAccepted && $sc.collect("Documents[docDefNumber == '539911']").collect("Statuses[StatusType == 'MRN' && endDate == null]").isEmpty() && $sc.collect("Documents[docDefNumber == '519902']").collect("Statuses[StatusType == 'PENDING' && endDate == null]").isEmpty())
+              #caaCard("${addURL}ADD-5-Uplift-Will", "document_gen06.png", "Uplift Will", "Uplift this will.")
+            #end
+          #else
+            #caaCard("${addURL}ADD-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Add a copy of the original Will to the case.")
+          #end
+          #caaCard("${addURL}ADD-5-WDRA-OtherDoc", "document_gen09.png", "Lodge Document", "Add an Affidavit or other document to this case.")
+          #caaCard("${addURL}ADD-5-NOA-CAR", "document_key.png", "Case Access Request", "Process a Case Access Request by uploading a Notice of Acting / Address for Service.")
+        </div>
+      </div>
+    #elseif ($case.filingType == "570000")
+      <div class="panel" id="actions_misc">
+        <div class="row">
+          #if (!$isWillAccepted)
+            #if ($will0)
+              #caaCard("${upURL}$will0.id&caseId=$cid&formCode=UP-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Upload or replace the Will document.")
+            #else
+              #caaCard("${addURL}ADD-5-ReceiveOriginalWill", "document_gen07.png", "Receive Original Will", "Add a copy of the original Will to the case.")
+            #end
+          #end
+          #caaCard("${addURL}ADD-5-WDRA-OtherDoc", "document_gen09.png", "Lodge Document", "Add an Affidavit or other document to this case.")
+          #caaCard("${addURL}ADD-5-NOA-CAR", "document_key.png", "Case Access Request", "Process a Case Access Request by uploading a Notice of Acting / Address for Service.")
+        </div>
+      </div>
+    #end
+  </div>
+#end
+#end
+
+
+

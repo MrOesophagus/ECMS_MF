@@ -1,0 +1,96 @@
+#*
+	Change Management
+ 	Written by: kcsmbf 02/11/18
+    Change Log:
+*#
+<div id="${widgetId}_output"> </div>
+<script type="text/javascript">
+  function ${widgetId}_getLegalRepData() {
+    var LCODE = $jQuery('.pLCODE:input').val();
+    var PCODE = $jQuery('.pPCODE:input').val();
+    var usePcode = $jQuery('input[name*="cfChoice01"]:checked').val();
+    var url = '$ajaxUrl&lcode=' + LCODE;
+    if (usePcode == "N") {
+      url += '&upc=N&pcode=isNA';
+    } else if (usePcode == "Y" && PCODE != "") {
+      url += '&upc=Y&pcode=' + PCODE;
+    } else {
+      url += '&upc=Y&pcode=isNA';
+    }
+    $jQuery('#${widgetId}_output').load(url, function(response, status, xhr){
+    });
+  }
+
+  $jQuery(document).ready(function() {
+    $jQuery('input[name*="cfChoice01"]').live("change", function() {
+      ${widgetId}_getLegalRepData();
+    });
+    /* $jQuery('.pPCODE:input, .pLCODE:input').bind("change", function() { */
+    $jQuery('.pPCODE:input').bind("change", function() {
+      ${widgetId}_getLegalRepData();
+    });
+  });
+</script>
+
+
+??? AJAX
+
+#set ($LCode = $request.getParameter("lcode"))
+#set ($upc = $request.getParameter("upc"))
+#set ($PCode = $request.getParameter("pcode"))
+#set ($dirLawFirm = $DirOrgUnit.getByCode($LCode))
+##<br><strong>AJAX Test Results:</strong> L: $LCode, upc: $upc, P: $PCode <br>
+#if (!$dirLawFirm)
+  <div class="caa-alert caa-alert-error">
+    <div class="caa-alert-body">
+      <p class="caa-alert-text">
+        You have selected an invalid law firm!
+      </p>
+    </div>
+  </div>
+#else
+  <div class="caa-alert caa-alert-warning">
+    <div class="caa-alert-body">
+      <p class="caa-alert-text">
+        #if ($LCode == "")
+          You have not selected a Law Firm.
+          <br><br>
+          Please enter your LCode in the field above and select from the search results.
+        #elseif ($upc == "N")
+          You have selected <strong>$dirLawFirm.orgUnitName</strong> as your organisation.
+          <br><br>
+          #if (!$dirLawFirm.email)
+            There is no email address recorded for this Law Firm.
+            <br>
+            Please contact the Law Society to add one, otherwise you will not receive Court notifications.
+          #else
+            All notifications regarding this case will be sent to: <strong>$dirLawFirm.email</strong>
+          #end
+        #elseif ($upc == "Y" && $PCode == "isNA")
+          If you choose to enter your PCODE, all correspondence and notifications will be sent to you directly.
+          <br><br>
+          If you would prefer correspondence and notifications to go to your Law Firm Administrator, please select "No in the previous question ("<em>Would you like to enter your PCODE</em>").
+        #elseif ($upc == "Y")
+          #set ($dirPrac = $DirPerson.getByCode($PCode))
+          #if (!$dirPrac)
+            You have entered an invalid PCODE.  Please try again.
+          #else
+            You have selected <strong>$dirLawFirm.orgUnitName</strong> as your organisation and <strong>$dirPrac.personNameFML</strong> as the Practitioner.
+            <br><br>
+            #if (!$dirPrac.email)
+              There is no email address recorded for this Practitioner.
+              <br>
+              Please contact the Law Society to add one, otherwise you will not receive Court notifications.
+            #else
+              If your Case Access Request is approved, the case invitation will be sent to the email address linked to your CourtSA account (<strong>$dirLawFirm.email</strong>).
+              <br><br>
+              After accepting the invitation, all subsequent notifications regarding this case will be sent to <strong>$dirPrac.email</strong>
+            #end
+          #end
+        #end
+      </p>
+    </div>
+  </div>
+#end
+
+

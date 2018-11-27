@@ -1,0 +1,130 @@
+#*
+	Change Management
+ 	Written by: kcsmbf 16/08/18
+	Change Log:
+*#
+
+<div id="${widgetId}_res"></div>
+#set ($ignore = $request.session.setAttribute("case.Number", $case.caseNumber))
+#set ($ignore = $request.session.setAttribute("case.id", $case.id))
+
+<script>
+  function ${widgetId}_runCheck() {
+    var newEstateValue = $jQuery('.pNewEstateValue:input').val();
+    var pty = $jQuery('input[name*="PartyCrossReferenceWidget"]:checked').val();
+    var url = '$ajaxUrl&newEV=' + newEstateValue + '&party=' + pty;
+    $jQuery('#${widgetId}_res').load(url, function(response, status, xhr){
+    });
+  }
+
+  $jQuery(document).ready(function() {
+    $jQuery('.pNewEstateValue:input').bind("change", function() {
+      ${widgetId}_runCheck();
+    });
+    $jQuery('input[name*="PartyCrossReferenceWidget"]').live("change", function() {
+      ${widgetId}_runCheck();
+    });
+  });
+</script>
+
+
+
+??? AJAX
+
+#set ($newEstateValue = $request.getParameter("newEV"))
+#set ($pty = $request.getParameter("party"))
+#set ($caseNum = $request.session.getAttribute("case.Number"))
+#set ($cid = $request.session.getAttribute("case.id"))
+#set ($calcResults = $RuleDef.exec("PROB_AMEND_ASSETS_CALCULATOR", null, {"cse": $caseNum, "newEstateAmount": $newEstateValue, "saveNewEstateValue": false}))
+#set ($newFeeAmount = $calcResults.getOutputValue("newFeeAmount"))
+#set ($invoices = $calcResults.getOutputValue("curInvoices"))
+#set ($invoicesTotal = 0)
+
+#*
+#foreach ($inv in $invoices)
+  #if ($inv.balance == 0 && $inv.approvalRequestCents == 0)
+    #set ($invoicesTotal = $invoicesTotal + $inv.amount)
+  #elseif ($inv.balance == 0 && $inv.approvalRequestCents != 0)
+    #set ($invoicesTotal = $invoicesTotal - $inv.amount)
+  #else
+    #set ($invoicesTotal = $invoicesTotal + $inv.amount)
+  #end
+#end
+*#
+#foreach ($inv in $invoices)
+  #if ($inv.balance == 0 && $inv.approvalRequestCents != 0)
+    #set ($invoicesTotal = $invoicesTotal - $inv.amount)
+  #else
+    #set ($invoicesTotal = $invoicesTotal + $inv.amount)
+  #end
+#end
+
+#if ($newFeeAmount == $invoicesTotal)
+  #set ($divColour = "caa-alert-success")
+  #set ($feeChange = false)
+#else
+  #set ($divColour = "caa-alert-warning")
+  #set ($feeChange = true)
+#end
+
+#if ($pty == "undefined")
+  <div class="caa-alert caa-alert-error">
+    <div class="caa-alert-body">
+      <p class="caa-alert-text">
+        Please select a filing party above before proceeding.
+      </p>
+    </div>
+  </div>
+#elseif ($pty != "undefined" && $newEstateValue != "")
+  <div class="caa-alert $divColour">
+    <div class="caa-alert-body" style="min-width:650px;">
+      #if (!$feeChange)
+        <p class="caa-alert-text">
+          There is no additional payment required for this change in Estate asset value.
+        </p>
+      #else
+        <p class="caa-alert-text">
+          #if ($newFeeAmount > $invoicesTotal)
+            <h4>This change in Estate asset value will result in a fee increase.</h4>
+            <br>
+            An additional amount of <strong>$numberTool.currency($mathTool.sub($newFeeAmount, $invoicesTotal))</strong> needs to be paid (after refunds and outstanding invoices have been processed).
+          #else
+            <h4>This change in Estate asset value will result in a fee decrease.</h4>
+            <br>
+            A refund of <strong>$numberTool.currency($mathTool.sub($invoicesTotal, $newFeeAmount))</strong> is owed.
+          #end
+          <br>
+          Please Save and go to the Payments Screen (button below) and perform this.
+        </p>
+      #end
+      <br>
+      #if (!$invoices.isEmpty())
+        Summary of Invoices to date:
+        <table class="table" style="width:95%;">
+          <tr>
+            <th>Invoice #</th><th>Date</th><th>Payor</th><th>Amount</th><th>Paid?</th>
+          </tr>
+          #foreach ($inv in $invoices)
+            <tr>
+              <td>$inv.invoiceNumber</td>
+              <td>$dateTool.format("dd MMM yyyy", $inv.createdDate)</td>
+              <td>$inv.party.personNameFML</td>
+              <td>$numberTool.currency($inv.amount)</td>
+              <td>
+                #if ($inv.balance == 0 && $inv.approvalRequestCents == 0)
+                  <center><i class="i-check-big" style="color:green;font-size:1.2em;">&nbsp;</i></center>
+                #elseif ($inv.balance == 0 && $inv.approvalRequestCents != 0)
+                  <center><i class="i-yield" style="color:#fdb81e;font-size:1.2em" title="Has Pending Refund">&nbsp;</i></center>
+                #else
+                  <center><i class="i-x2" style="color:red;font-size:1.2em">&nbsp;</i></center>
+                #end
+              </td>
+            </tr>
+          #end
+        </table>
+      #end
+    </div>
+  </div>
+#end
+
+

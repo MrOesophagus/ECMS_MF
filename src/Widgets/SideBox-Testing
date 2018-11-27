@@ -1,0 +1,170 @@
+??? INPUTS:
+
+Group1Title
+ForceGroup1AsIndividual
+Group2Title
+ForceGroup2AsIndividual
+
+??? TEMPLATE
+
+<!--
+	Change Management
+ 	Written by: 	KCSMBF
+	Last change by:	KCSMBF 11/01/2018
+	Change Reason:	Got fee estimation for SSED working
+-->
+
+<style type="text/css">
+  @media (max-width: 1024px) {
+    .sideBox {
+      display: none;
+    }
+  }
+  .sideBox {
+    position: fixed;
+    right: 2%;
+    top: 15%;
+    z-index: 10;
+    min-width: 250px;
+  }
+  .sideBox-wrapper {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    flex: 1 1 auto;
+    padding: 5px;
+  }
+  .sideBox-header {
+    background-color: #428bca;
+    text-align: center;
+    border-radius: 3px;
+    height: 40px;
+    line-height: 40px;
+  }
+  .sideBox-header > h4 {
+    display: inline-block;
+    vertical-align: middle;
+    line-height: normal;
+    color: white;
+    font-weight: bold;
+  }
+  .sideBox-body {
+    padding-bottom: 10px;
+    padding-top: 10px;
+  }
+</style>
+
+<div id="${widgetId}_sideBox" class="sideBox sideBox-wrapper"> </div>
+
+<script type="text/javascript">
+  var group1 = [];
+  var group2 = [];
+
+  function ${widgetId}_sideBox(grp1, grp2) {
+    var filingType = $jQuery('.pCaseFilingType option:selected').val();
+    var url = '$ajaxUrl&filingType=' + filingType + '&servicePartySize=' + grp2.size();
+    var htmlstring = '<div class="sideBox-header"><h4>Lodgement Summary</h4></div>';
+    htmlstring += '<div class="sideBox-body">';
+    if ($jQuery('.pCaseCategory:input').val()) {
+      htmlstring += '<br>' + $jQuery('.pCaseCategory option:selected').text();
+    }
+    if ($jQuery('.pCaseJurisdiction:input').val()) {
+      htmlstring += '<br>' + $jQuery('.pCaseJurisdiction option:selected').text() + '<br>';
+    } else {
+      htmlstring += '<br>';
+    }
+    if ($jQuery('.pClaimAmount').length > 0) {
+      var claimAmount = $jQuery('.pClaimAmount:input').val();
+      htmlstring += '<br><strong>Amount:</strong>&nbsp;&nbsp;${esc.d}' + claimAmount + '<br>';
+    }
+    htmlstring += '<br><strong>$Group1Title:</strong><br>';
+    for (var i = 0; i < grp1.size(); i++) {
+        htmlstring += i+1 + '. ' + grp1[i] + '<br>';
+    }
+    htmlstring += '<br><strong>$Group2Title:</strong><br>';
+    for (var i = 0; i < grp2.size(); i++) {
+      htmlstring += i+1 + '. ' + grp2[i] + '<br>';
+    }
+    htmlstring += "<div id='${widgetId}_Fee'> </div>";
+    htmlstring += '</div>';
+    $jQuery('#${widgetId}_sideBox').html(htmlstring);
+    $jQuery('#${widgetId}_Fee').load(url, function(response, status, xhr){
+    });
+  }
+
+  function ${widgetId}_getPtyGrp1() {
+    group1 = [];
+    var grp1PtySubType = $jQuery('.pGrp1PtySubType');
+    var grp1FirstName = $jQuery('.pGrp1FirstName');
+    var grp1LastName = $jQuery('.pGrp1LastName');
+    var grp1OrgName = $jQuery('.pGrp1OrgName');
+    if ('$ForceGroup1AsIndividual' == "yes") {
+      for (var i = 0; i < grp1LastName.size(); i++) {
+        group1.push(grp1FirstName.eq(i).val().slice(0,1) + ' ' + grp1LastName.eq(i).val());
+      }
+    } else {
+      for (var i = 0; i < grp1PtySubType.size(); i += 2) {
+        var j = i/2;
+        if (grp1PtySubType.eq(i).val() == "INDV") {
+          group1.push(grp1FirstName.eq(j).val().slice(0,1) + ' ' + grp1LastName.eq(j).val());
+        } else {
+          group1.push(grp1OrgName.eq(j).val());
+        }
+      }
+    }
+  }
+
+  function ${widgetId}_getPtyGrp2() {
+    group2 = [];
+    var grp2PtySubType = $jQuery('.pGrp2PtySubType');
+    var grp2FirstName = $jQuery('.pGrp2FirstName');
+    var grp2LastName = $jQuery('.pGrp2LastName');
+    var grp2OrgName = $jQuery('.pGrp2OrgName');
+    if ('$ForceGroup2AsIndividual' == "yes") {
+      for (var i = 0; i < grp2LastName.size(); i++) {
+        group2.push(grp2FirstName.eq(i).val().slice(0,1) + ' ' + grp2LastName.eq(i).val());
+      }
+    } else {
+      for (var i = 0; i < grp2PtySubType.size(); i += 2) {
+        var j = i/2;
+        if (grp2PtySubType.eq(i).val() == "INDV") {
+          group2.push(grp2FirstName.eq(j).val().slice(0,1) + ' ' + grp2LastName.eq(j).val());
+        } else {
+          group2.push(grp2OrgName.eq(j).val());
+        }
+      }
+    }
+  }
+
+
+  $jQuery(document).ready(function() {
+    ${widgetId}_sideBox(group1, group2);
+    $jQuery('.pClaimAmount:input, .pCaseCategory:input, .pCaseJurisdiction:input').on( "change", function() {
+      ${widgetId}_sideBox(group1, group2);
+    });
+    $jQuery('.pGrp1PtySubType:input, .pGrp1LastName:input, .pGrp1OrgName:input').live("change", function() {
+      ${widgetId}_getPtyGrp1();
+      ${widgetId}_sideBox(group1, group2);
+    });
+    $jQuery('.pGrp2PtySubType:input, .pGrp2LastName:input, .pGrp2OrgName:input').live("change", function() {
+      ${widgetId}_getPtyGrp2();
+      ${widgetId}_sideBox(group1, group2);
+    });
+  });
+</script>
+
+
+??? AJAX
+
+## Get AJAX url parameters
+#set ($filingType = $request.getParameter('filingType'))
+#set ($jurisdiction = $request.getParameter('jurisdiction'))
+#set ($servicePartySize = $request.getParameter('servicePartySize'))
+
+## Run the BR to calculate fee
+#set ($brFeeCalc = $RuleDef.exec("MattTest3",null,{"servicePartySize": $servicePartySize, "filingType": $filingType, "jurisdiction": $jurisdiction}))
+#set ($fee = $brFeeCalc.getOutputValue("retVal"))
+
+## AJAX output:
+<br><strong>Estimated Fee:</strong>&nbsp;&nbsp;$numberTool.currency($fee)
+
+

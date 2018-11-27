@@ -1,0 +1,167 @@
+<div id="${widgetId}_res"> </div>
+
+<script type="text/javascript">
+  function ${widgetId}_getCaseData() {
+    var caseCategory = $jQuery('.pCaseCategory:input').val();
+    var claimAmount = $jQuery('.pClaimAmount:input').val();
+    var claimAmountType = $jQuery('.pClaimAmountType:input').val();
+    var caseJurisdiction = $jQuery('.pCaseJurisdiction:input').val();
+    var url = '$ajaxUrl&category=' + caseCategory + '&amount=' + claimAmount;
+    if (claimAmountType) {
+      url += '&type=' + claimAmountType;
+    };
+    if (caseJurisdiction) {
+      url += '&jurisdiction=' + caseJurisdiction;
+    };
+    jQuery('#${widgetId}_res').load(url, function(response, status, xhr) {
+    });
+  }
+
+  function ${widgetId}_setJurisdictions(subJurisdiction, forcedJurisdiction) {
+	jQuery('.pCaseSubJurisdiction').val(subJurisdiction);
+    /*var subJurisElements = document.getElementsByClassName('pCaseSubJurisdiction');
+    jQuery.each(subJurisElements, function(index, item) {
+      item.value = subJurisdiction;
+      alert(item.value);
+    }); */
+    if (forcedJurisdiction != "") {
+      jQuery('.pCaseJurisdiction').val(forcedJurisdiction);
+    }
+  }
+
+  $jQuery(document).ready(function() {
+    ${widgetId}_getCaseData();
+    $jQuery('.pCaseCategory:input').bind( "change", function() {
+      ${widgetId}_getCaseData();
+    });
+    $jQuery('.pClaimAmount:input').bind( "change", function() {
+      ${widgetId}_getCaseData();
+    });
+    $jQuery('.pClaimAmountType:input').bind("change", function() {
+      ${widgetId}_getCaseData();
+    });
+    $jQuery('.pCaseJurisdiction:input').bind("change", function() {
+      $jQuery('.pCaseCategory').val('');
+      ${widgetId}_getCaseData();
+    });
+  });
+</script>
+
+
+??? AJAX
+
+#set ($category = $request.getParameter("category"))
+#set ($amount = $conversionTool.toNumber($request.getParameter("amount")))
+#set ($amountType = $request.getParameter("type"))
+#set ($jurisdiction = $request.getParameter("jurisdiction"))
+#set ($claimSC = ["411100","412300","412400","412500","412600","412700","412800","412900","413100","413200","413300"])
+#set ($claimDC = ["410900","411500","411600"])
+#set ($claimHC = ["411000","411400","413000"])
+#set ($claimMCGC = ["410600","412000","412100","412200"])
+#set ($getCat = "<strong>" + $lookupListTool.getLabel("CASE_CATEGORY", $category) + "</strong>")
+
+#macro (selectJurisdiction $showamount)
+  <div class="alert alert-warning">
+    <p>You have selected $getCat as your case category#if ($showamount == "yes") and your expected claim amount as greater than ${esc.d}100,000#{end},
+    which means your case must be referred to the Higher Courts.<br><br>
+    Please select the Jurisdiction you wish to lodge with in the box above.<br><br>
+    <em>For reference:</em><br>
+    The lodgement fee for the District Court is ${esc.d}xxx.<br>
+    The lodgement fee for the Supreme Court is ${esc.d}yyy.<br></p>
+#end
+
+#macro (jurisdictionForced1 $juris $mcType $showamount)
+  <div class="alert alert-info">
+    <p>You have selected $getCat as your case category#if ($juris == "Magistrates" && $amount > 1 && $showamount == "yes") with an estimated claim amount of #if ($mcType == "Minor")less than ${esc.d}12,000#{else}greater than ${esc.d}12,000#{end}#{end}.<br><br>
+    Due to the nature of this type of claim, it is required to be heard in the $juris Court #if ($juris =="Magistrates") as a $mcType Civil Claim #end and your jurisdiction has been set accordingly.<p>
+  </div>
+#end
+
+#macro (jurisdictionChosen3 $juris $showamount)
+  <div class="alert alert-info">
+    <p>You have selected $getCat as your case category#if ($showamount == "yes")with an estimated claim amount of greater than ${esc.d}100,000.<br><br>
+    As this matter is required to be heard in a Higher Court, the jurisdiction will be set to $juris Court as selected by you.</p>#else and elected to have it heard in the $juris Court.</p>#end
+  </div>
+#end
+
+#macro (erroralert)
+  <div class="alert alert-danger">
+    <p>The Claim Amount Type selection does not match the value you have entered in the Claim Amount field.<br><br>
+    Please check and adjust as necessary.</p>
+  </div>
+#end
+
+#if ($category != "")
+  #if ($amount > 1 && (($amountType == "G100" && $amount < 100000) || ($amountType == "L100" && $amount > 100000)))
+    #erroralert()
+  #elseif ($amountType) ## SRL Form
+    #if ($claimSC.contains($category))
+      #jurisdictionForced1("Supreme" "empty" "no")
+      #set ($subJurisdiction = "SCC")
+      #set ($forcedJurisdiction = "SC")
+    #elseif ($claimDC.contains($category))
+      #jurisdictionForced1("District" "empty" "no")
+      #set ($subJurisdiction = "DCC")
+      #set ($forcedJurisdiction = "DC")
+    #elseif ($claimHC.contains($category))
+      #selectJurisdiction("no")
+    #elseif ($claimMCGC.contains($category))
+      #jurisdictionForced1("Magistrates" "General" "yes")
+      #set ($subJurisdiction = "MCGC")
+      #set ($forcedJurisdiction = "MC")
+    #else
+      #if ($amountType == "G100")  ## Higher Courts
+        #if (!$jurisdiction)
+          #selectJurisdiction("yes")
+        #elseif ($jurisdiction == "SC")
+          #jurisdictionChosen3("Supreme" "yes")
+          #set ($subJurisdiction = "SCC")
+        #elseif ($jurisdiction == "DC")
+          #jurisdictionChosen3("District" "yes")
+          #set ($subJurisdiction = "DCC")
+        #end
+      #else
+        #if (($amountType == "L100" || $amountType == "LSUM") && $amount <= 12000)
+          #jurisdictionForced1("Magistrates" "Minor" "yes")
+          #set ($subJurisdiction = "MCMC")
+          #set ($forcedJurisdiction = "MC")
+        #elseif ($amountType == "L100" && $amount > 12000)
+          #jurisdictionForced1("Magistrates" "General" "yes")
+          #set ($subJurisdiction = "MCGC")
+          #set ($forcedJurisdiction = "MC")
+        #end
+      #end
+    #end
+  #else ## Non-SRL form
+    #if ($jurisdiction == "MC")
+      #if ($amount > 100000)
+        <div class="alert alert-danger">Claims with an estimated claim amount greater than ${esc.d}100,000 can not be filed in the Magistrates Court</div>
+      #elseif ($category == "410600" || $category == "412000")
+        #jurisdictionForced1("Magistrates" "General" "no")
+        #set ($subJurisdiction = "MCGC")
+      #elseif ($amount > 12000)
+        #jurisdictionForced1("Magistrates" "General" "yes")
+        #set ($subJurisdiction = "MCGC")
+      #elseif ($amount > 1)
+        #jurisdictionForced1("Magistrates" "Minor" "yes")
+        #set ($subJurisdiction = "MCMC")
+      #end
+    #elseif ($jurisdiction == "SC")
+      #jurisdictionChosen3("Supreme" "no")
+      #set ($subJurisdiction = "SCC")
+    #elseif ($jurisdiction == "DC")
+      #jurisdictionChosen3("District" "no")
+      #set ($subJurisdiction = "DCC")
+    #end
+  #end
+#end
+
+<!--
+<script type="text/javascript">
+  ${widgetId}_setJurisdictions('$subJurisdiction', '$forcedJurisdiction');
+</script>
+-->
+
+
+
+

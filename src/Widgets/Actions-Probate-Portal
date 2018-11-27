@@ -1,0 +1,257 @@
+#*
+	Change Management
+ 	Written by: kcsmbf 06/06/18
+	Change Log:	kcsmbf 23/06/18 Added extra case type actions
+    			kcsmbf 25/06/18 Commented out table sections & added new 530000 actions
+                kcsmbf 31/07/18 Slight alterations and replaced icons with new versions
+                kcsmbf 28/08/18 Added flex row functionality
+                kcsmbf 31/08/18 Changed flex-row to min height as flex-row doesn't work with IE
+                kcsmbf 13/11/18 Reworked isLawyer logic to not be reliant on user.portal.roles
+*#
+
+#set ($cid = $case.id)
+#set ($sc = $case.collect("SubCases").first())
+#if ($case.status == "CLOS")
+  #set ($isClosed = true)
+#elseif ($case.status == "REJ")
+  #set ($isRejected = true)
+#else
+  #set ($isClosed = false)
+  #set ($isRejected = false)
+#end
+#set ($isWillAccepted = false)
+#if ($case.collect("Documents[docDefNumber == '519902']").filter("Document is Accepted and Current").size() > 0)
+  #set ($isWillAccepted = true)
+#end
+
+##
+## Defining who the current portal user is
+##
+#*
+#set ($isLawyer = false)
+#if ($user.portal.roles.contains("Law Firm") || $user.portal.roles.contains("Law Firm User"))
+  #set ($isLawyer = true)
+  #set ($asst = $case.collect("Assignments").filter("CaseAssignment = Current Portal User").first())
+  #set ($asstptys = $asst.findByXRef("Party", "REPRESENTEDBY").filter("Party Status is not Inactive"))
+#else
+  #set ($pty = $case.collect("Parties").filter("Party = Current Portal User").first())
+#end
+*#
+#set ($isLawyer = false)
+#set ($asst = $case.collect("Assignments").filter("CaseAssignment = Current Portal User").first())
+#if ($asst)
+  #set ($isLawyer = true)
+  #set ($asstptys = $asst.findByXRef("Party", "REPRESENTEDBY").filter("Party Status is not Inactive"))
+#else
+  #set ($pty = $case.collect("Parties").filter("Party = Current Portal User").first())
+#end
+
+##
+## Defining permissions of the current user
+##
+#if ($case.filingType == "510000")
+  #set ($proving = ["PEX", "PAD", "PAPPR"])
+  #set ($isProving = false)
+  #if ($isLawyer)
+    #foreach ($party in $asstptys)
+      #if ($proving.contains($party.partyType))
+        #set ($isProving = true)
+        #break
+      #end
+    #end
+  #elseif ($proving.contains($pty.partyType))
+    #set ($isProving = true)
+  #end
+#elseif ($case.filingType == "520000")
+  #set ($isCaveator = false)
+  #set ($isInter = false)
+  #if ($isLawyer)
+    #foreach ($party in $asstptys)
+      #if ($party.partyType == "CAV")
+        #set ($isCaveator = true)
+        #break
+      #elseif ($party.partyType == "INTER")
+        #set ($isInter = true)
+        #break
+      #end
+    #end
+  #elseif ($pty.partyType == "CAV")
+    #set ($isCaveator = true)
+  #elseif ($pty.partyType == "INTER")
+    #set ($isInter = true)
+  #end
+#elseif ($case.filingType == "530000")
+  #set ($isApplicant = false)
+  #set ($isInter = false)
+  #set ($isRespondent = false)
+  #set ($hasInterRes = false)
+  #if ($case.collect("Parties[partyType == 'INTER' || partyType == 'RES']").size() > 0)
+    #set ($hasInterRes = true)
+  #end
+  #if ($isLawyer)
+    #foreach ($party in $asstptys)
+      #if ($party.partyType == "APP")
+        #set ($isApplicant = true)
+        #break
+      #elseif ($party.partyType == "INTER")
+        #set ($isInter = true)
+        #break
+      #elseif ($party.partyType == "RES")
+        #set ($isRespondent = true)
+        #break
+      #end
+    #end
+  #elseif ($pty.partyType == "APP")
+    #set ($isApplicant = true)
+  #elseif ($pty.partyType == "INTER")
+    #set ($isInter = true)
+  #elseif ($pty.partyType == "RES")
+    #set ($isRespondent = true)
+  #end
+#end
+
+##
+## CAA Card macro
+##
+#macro (CAA_Card $link $icon $hText $text)
+  <div class="col-xs-12 col-sm-6 col-lg-4 caa-action-card">
+    <a href=$link>
+      <div class="caa-action-card-header">
+        <img src="${sysPropTool.getValue('general.portal.images.url')}/icons/$icon">
+        <div class="caa-action-card-header-text">$hText</div>
+      </div>
+    </a>
+    <div class="caa-action-card-content">
+      <p>$text</p>
+    </div>
+  </div>
+#end
+
+##
+## Actions Script
+##
+<h3 style="text-align:center;margin-top:-10px;color:#777">Available Actions</h3>
+#if ($isRejected)
+  <h4 style="text-align:center;">This case has been rejected.  No further actions are permitted.</h4>
+#else
+  #if (!$isLawyer && !$pty.collect("RepresentedByCaseAssignments").filter("Case Assignment is Current Lawyer").isEmpty())
+    <h4 style="text-align:center">Only your lawyer may perform case actions</h4>
+  #else
+    <div class="container" style="width:95%">
+      #if ($case.filingType == "510000")
+        <div class="panel" id="actions_grant">
+          <div class="row">
+            #if (!$isClosed && $isProving)
+              #CAA_Card("?q=node/413/$cid", "scroll_break.png", "Discontinue Grant", "Discontinue the Grant Application. <em>This may result in a refund.</em>")
+            #end
+            #if ($isClosed && $sc.status == "ISS" && $isProving)
+              #CAA_Card("?q=node/377/$cid", "scroll_gen01.png", "Amend/Revoke Grant", "Application to Amend or Revoke a Grant.")
+            #end
+            #CAA_Card("?q=node/390/$cid", "document_gen09.png", "Lodge Document", "Add a Civil Order, Affidavit, or other type of document.")
+          </div>
+        </div>
+      #elseif ($case.filingType == "520000")
+        #if ($sc.status == "LIVE") #set ($isLive = true) #else #set ($isLive = false) #end
+        #if ($case.collect("Documents[docDefNumber == '529901']").filter("Document is Filed and Current").size() > 0)
+          #set ($hasWarning = true)
+        #else
+          #set ($hasWarning = false)
+        #end
+        #if ($case.collect("Documents[docDefNumber == '529902']").filter("Document is Filed and Current").size() > 0)
+          #set ($hasAppWarn = true)
+        #else
+          #set ($hasAppWarn = false)
+        #end
+        #if ($case.collect("Documents[docDefNumber == '529903']").filter("Document is Filed and Current").size() > 0)
+          #set ($hasCitation = true)
+        #else
+          #set ($hasCitation = false)
+        #end
+        <div class="panel" id="actions_caveat">
+          <div class="row">
+            #if ($isCaveator && $isLive && !$hasWarning && !$hasAppWarn && !$hasCitation)
+              #CAA_Card("?q=node/404/$cid", "document_gen04.png", "Renew Caveat", "You may renew this caveat for six months.")
+            #end
+            #if ($isCaveator && ($isLive || $sc.status == "PENDING") && !$hasAppWarn)
+              #CAA_Card("?q=node/418/$cid", "document_remove.png", "Withdraw Caveat", "You may withdraw this caveat.")
+            #end
+            #if ($isInter && $isLive)
+              #CAA_Card("?q=node/410/$cid", "document_alert.png", "Add Warning", "Add a Warning to this Caveat.")
+            #end
+            #if ($isCaveator && $isLive)
+              #CAA_Card("?q=node/405/$cid", "document_add.png", "Add Citation", "Add a Citation to this Caveat.")
+            #end
+            #if ($isLive && ($hasWarning || $hasCitation))
+              #CAA_Card("?q=node/411/$cid", "document_gen03.png", "Add Appearance", "Add an Appearance to a Warning or Citation.")
+            #end
+            ##if ($isLive || $sc.status == "PENDING")
+            #CAA_Card("?q=node/402/$cid", "document_gen09.png", "Lodge Document", "Add Affidavit, Proof of Service of Citation, or another document type.")
+            ##end
+          </div>
+        </div>  <!-- End of Caveat Actions -->
+      #elseif ($case.filingType == "530000")
+        #set ($isS9 = false)
+        #if (!$case.collect("Documents[docDefNumber == '529803']").filter("Document is Filed and Current").isEmpty())
+          #set ($isS9 = true)
+        #end
+        #set ($hasAmendedGrant =  false)
+        #set ($amGrants = $sc.collect("Documents[docDefNumber == '519915']"))
+        #foreach ($amGrant in $amGrants)
+          #if ($amGrant.collect("Statuses[statusType == 'FILED' && endDate == null]").isEmpty())
+            #set ($hasAmendedGrant = true)
+            #break
+          #end
+        #end
+        <div class="panel" id="actions_summons">
+          <div class="row">
+            #if (!$isClosed && $isApplicant)
+              #CAA_Card("?q=node/369/$cid", "document_no.png", "Discontinue Application", "Lodge a Notice of Discontinuance<br>&nbsp;")
+              #if ($hasInterRes)
+                #CAA_Card("?q=node/376/$cid", "document_gen07.png", "Proof of Service", "File a Proof of Service")
+              #end
+            #end
+            #if (!$isClosed && $isRespondent)
+              #CAA_Card("?q=node/371/$cid", "document_gen06.png", "Response to Application", "File a Response to this Application")
+            #end
+            #if ($isClosed && $isS9 && $sc.status == "ISS" && $isApplicant)
+              #CAA_Card("?q=node/377/$cid", "scroll_gen01.png", "Amend/Revoke Grant", "Application to Amend or Revoke a Grant.")
+            #end
+            #if (!$isClosed || $sc.status == "PENDING")
+              #CAA_Card("?q=node/394/$cid", "document_gen09.png", "Lodge Document", "Add Affidavit or another document type.")
+            #end
+          </div>
+        </div>
+      #elseif ($case.filingType == "540000")
+        <div class="panel" id="summons_actions">
+          <div class="row">
+            #CAA_Card("?q=node/372/$cid", "document_gen09.png", "Lodge Document", "Add a Proof of Service, Affidavit, or other document to this Subpoena.")
+          </div>
+        </div>
+      #elseif ($case.filingType == "550000")
+        <div class="panel" id="wdrm_actions">
+          <div class="row">
+            #if ($isWillAccepted && $sc.collect("Documents[docDefNumber == '539911']").collect("Statuses[statusType == 'MRN' && endDate == null]").isEmpty() && $sc.collect("Documents[docDefNumber == '519902']").collect("Statuses[statusType == 'PENDING' && endDate == null]").isEmpty())
+              #CAA_Card("?q=node/387/$cid", "document_gen06.png", "Uplift Will", "Uplift this will.")
+            #end
+            #CAA_Card("?q=node/359/$cid", "document_gen09.png", "Lodge Document", "Add an Affidavit or other document to this case.")
+          </div>
+        </div>
+      #elseif ($case.filingType == "560000")
+        <div class="panel" id="wdrm_actions">
+          <div class="row">
+            #if ($isWillAccepted && $sc.collect("Documents[docDefNumber == '539911']").collect("Statuses[statusType == 'MRN' && endDate == null]").isEmpty() && $sc.collect("Documents[docDefNumber == '519902']").collect("Statuses[statusType == 'PENDING' && endDate == null]").isEmpty())
+              #CAA_Card("?q=node/387/$cid", "document_gen06.png", "Uplift Will", "Uplift this will.")
+            #end
+            #CAA_Card("?q=node/359/$cid", "document_gen09.png", "Lodge Document", "Add an Affidavit or other document to this case.")
+          </div>
+        </div>
+      #else
+        #CAA_Card("?q=node/359/$cid", "document_gen09.png", "Lodge Document", "Add an Affidavit or other document to this case.")
+      #end
+    </div>
+  #end
+  <p>&nbsp;</p>
+#end
+
+
+

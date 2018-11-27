@@ -1,0 +1,63 @@
+#*
+	Change Management
+ 	Written by: kcsmbf 22/08/18
+	Change Log:
+*#
+
+<div id="${widgetId}_res"> </div>
+
+<script>
+  function ${widgetId}_runCheck() {
+    var caseNum = $jQuery('.pCaseNumber:input').val();
+    var url = '$ajaxUrl&caseNum=' + caseNum;
+    $jQuery('#${widgetId}_res').load(url, function(response, status, xhr){
+    });
+  }
+
+  $jQuery(document).ready(function() {
+    $jQuery('.pCaseNumber:input').bind("change", function() {
+      ${widgetId}_runCheck();
+    });
+  });
+</script>
+
+
+??? AJAX
+
+#set ($caseNum = $request.getParameter("caseNum"))
+#set ($cas = $Case.get($caseNum))
+#if ($cas)
+  #set ($jurisdiction = $cas.collect("SubCases").first().cfJurisdiction)
+  <div class="caa-alert caa-alert-success">
+    <div class="caa-alert-body">
+      <p class="caa-alert-text">
+        You are requesting a Copy of Record for:<br><br>
+        &nbsp;&nbsp;$cas.caseNumber<br>
+        &nbsp;&nbsp;$cas.caseName<br>
+      </p>
+    </div>
+  </div>
+  <script>
+    $jQuery('.pCaseNumCheckResult').val("Y");
+    $jQuery('.pJurisdiction').val('$jurisdiction');
+  </script>
+#else
+  <div class="caa-alert caa-alert-error">
+    <div class="caa-alert-body">
+      <p class="caa-alert-text">
+        You have entered an invalid Case Number.<br><br>
+        The format should be similar to:<br>
+        &nbsp;&nbsp;PROB-xx-yyyyyy for a Probate case, or<br>
+        &nbsp;&nbsp;CIV-xx-yyyyyy for a Civil case.<br><br>
+        xx refers to the year the case was filed (e.g. '18' for a 2018 case)<br>
+        yyyyyy is a six digit number identifying the case.<br>
+      </p>
+    </div>
+  </div>
+  <script>
+    $jQuery('.pCaseNumCheckResult').val("N");
+  </script>
+#end
+
+
+
