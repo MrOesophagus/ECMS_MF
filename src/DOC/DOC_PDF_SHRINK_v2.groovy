@@ -2,8 +2,8 @@
 	Change Management
 	Written by: kcsmbf 03/10/18
 	Change Log:	kcsmbf 08/10/18 - Cleaned up rule
+	            kcsmbf 27/11/18 Changed ContentStream to allow for PDFs with rotation
 
-A4 size: 595 x 842 points
 */
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
