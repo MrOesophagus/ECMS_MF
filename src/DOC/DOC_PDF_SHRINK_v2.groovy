@@ -3,7 +3,6 @@
 	Written by: kcsmbf 03/10/18
 	Change Log:	kcsmbf 08/10/18 - Cleaned up rule
 	            kcsmbf 27/11/18 Changed ContentStream to allow for PDFs with rotation
-
 */
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
@@ -16,7 +15,7 @@ List mimeTypes = ["application/pdf", "application/msword", "application/rtf", "a
 if (mimeTypes.contains(_input.storageMimeType)) {
   docPdf = _input.toPdf(_input.file)
 } else {
-  addError("Sorry but this document format can not be shrunk (must be PDF or MS Word).")
+  addError("Sorry, but this document format can not be shrunk (must be PDF or MS Word).")
 }
 
 if (docPdf) { // Ensuring nullsafe (for reasons)
